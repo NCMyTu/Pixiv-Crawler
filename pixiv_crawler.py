@@ -21,17 +21,16 @@ def download_img_from_url(url, dst):
 		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 	}
 
-	response = requests.get(url, headers=headers, stream=True)
+	response = requests.get(url, headers=headers)
 
 	# if the request fails
 	if response.status_code != 200:
 		return False
 
 	with open(dst, 'wb') as handler:
-		for block in response.iter_content(1024):
-			handler.write(block)
-		# if the image is successfully downloaded
-		return True
+		handler.write(response.content)
+	
+	return True
 
 def download_imgs_from_artwork_id(artwork_id, folder_path, verbose=False):
 	""" 
