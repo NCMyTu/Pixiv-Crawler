@@ -74,7 +74,7 @@ def download_imgs_from_artwork_id(artwork_id, folder_path, verbose=False):
 		img_url = f"https://i.pximg.net/img-master/img/{create_date}/{img_and_page}_master1200.jpg"
 
 		if verbose:
-			print(f"Attempting download from url: {img_url}")
+			print(f"Attempting to download from url: {img_url}")
 
 		if download_img_from_url(img_url, img_path):
 			print(f"Downloaded {img_and_page}")
