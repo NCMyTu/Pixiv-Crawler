@@ -4,24 +4,27 @@ import re
 import os
 import json
 
+HEADERS = {
+		"Referer": "https://www.pixiv.net/",
+		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	}
+
 def download_img_from_url(url, dst):
 	"""
     Downloads an image from a given URL and saves it to the specified path.
 
     Parameters:
-	    url: the direct URL of the image.
-	    dst: the file path where the image will be saved.
+	    url : string
+	    	The direct URL of the image.
+	    dst : string
+	    	The file path where the image will be saved.
 
     Returns:
-    	True if the download is successful, False otherwise.
+    	bool
+    		True if the download is successful, False otherwise.
     """
 
-	headers = {
-		"Referer": "https://www.pixiv.net/",
-		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-	}
-
-	response = requests.get(url, headers=headers)
+	response = requests.get(url, headers=HEADERS)
 
 	# if the request fails
 	if response.status_code != 200:
@@ -32,30 +35,65 @@ def download_img_from_url(url, dst):
 	
 	return True
 
-def download_imgs_from_artwork_id(artwork_id, folder_path, verbose=False):
+def download_imgs_from_artwork_id(artwork_id, folder_path, max_retry=10, verbose=False):
 	""" 
     Downloads all images from a given Pixiv artwork/illust.
 
+    Fetches the image metadata for a given Pixiv artwork ID,
+    constructs the URLs for each page/image in the artwork, 
+    and attempts to download them into the specified folder. 
+
+    If any images fail to download, they are recorded and returned.
+
+    Doesn't have exception handler.
+
     Parameters:
-	    artwork_id: the ID of the artwork, expected to be string
-	    folder_path: the folder where all images will be saved.
+	    artwork_id : int
+	    	The ID of the artwork,
+	    folder_path : string
+	    	The folder where all images will be saved.
+	    max_retry : int, default=10
+	    	The maximum number of retries to fetch artwork metadata.
+	    verbose : bool
+	    	If True, prints additional information during the download process.
 
 	Returns:
-		A list of images that failed to download
+		failed : list of string
+			A list of artworks' artwork_ids that failed to download
     """
+
 	os.makedirs(folder_path, exist_ok=True)
 
 	artwork_id = str(artwork_id)
 
+	n_retry = 1
+
 	# fetch the artwork's HTML
 	url = f"https://www.pixiv.net/en/artworks/{artwork_id}"
-	html_doc = requests.get(url).text
 
-	soup = BeautifulSoup(html_doc, 'lxml')
+	# recently some artworks don't have metadata about
+	# images within it due to unknown reasons.
+	# retry fetching the artwork page in case this happens.
+	while n_retry <= max_retry:
+		if verbose:
+			print(f"attempt no.{n_retry}")
 
-	meta = soup.find_all("meta")[-1]
+		html_doc = requests.get(url, headers=HEADERS).text
+
+		soup = BeautifulSoup(html_doc, 'lxml')
+
+		meta = soup.find_all("meta")[-1]
+
+		meta_content = meta.get("content", "")
+
+		if not meta_content.startswith("sentry"):
+			# found artwork's info about images within it
+			break
+
+		n_retry += 1
 
 	content = meta.get("content")
+	# this will throw an exception if the metadata isn't fetched
 	content = json.loads(content)  # parse JSON
 	# print(json.dumps(content, indent=4)) # prettify
 
